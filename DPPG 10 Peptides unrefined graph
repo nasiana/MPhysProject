@@ -1,0 +1,31 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+x, y, z = [], [], []
+
+with open("p-density.xvg") as f:
+    for line in f:
+        cols = line.split()
+
+# had to add another column as there was another column added in the xvg file
+        
+        if len(cols) == 3:
+            try:
+                x_temp, y_temp, z_temp = float(cols[0]), float(cols[1]), float(cols[2])
+                x.append(x_temp)
+                y.append(y_temp)
+                z.append(z_temp)
+            except:
+                pass
+
+x, y, z = np.array(x), np.array(y), np.array(z)
+
+fig = plt.figure()
+ax1 = fig.add_subplot(111)
+ax1.set_title("Partial density")    
+ax1.set_xlabel(r'Coordinate (nm)')
+ax1.set_ylabel(r'Density (kg m\S-3\N)')
+ax1.plot(x, y, c='r', label='PO4')
+ax1.plot(x, z, c='r', label='GIIK', color = 'blue')
+leg = ax1.legend()
+plt.show()
