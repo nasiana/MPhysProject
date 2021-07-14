@@ -1,0 +1,100 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mplt
+import pandas as pd
+
+mplt.rcParams.update({'font.size': 15})
+
+def load_data(file:str):
+    values = {
+        'x_data': [],
+        'y_data': [],
+        'title': 'A plot',
+        'x_label': 'x',
+        'y_label': 'y',
+        'plot_labels': []
+        }
+
+    with open(file) as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+
+            if line.startswith('@'):
+                line = line[1:].rstrip()
+
+                if 'title' in line:
+                    values['title'] = line.split('"')[1]
+                    continue
+                if 'label' in line:
+                    if 'xaxis' in line:
+                        values['x_label'] = line.split('"')[1]
+                        continue
+                    if 'yaxis' in line:
+                        values['y_label'] = line.split('"')[1]
+                        continue
+                if 'legend' in line:
+                    if line.startswith(' s'):
+                        values['plot_labels'].append(line.split('"')[1])
+                        continue
+                continue
+
+            x_val, *y_vals = map(float, line.rstrip().split())
+            values['x_data'].append(x_val)
+            values['y_data'].append(y_vals)
+
+    return values
+
+def plotXVG(file:str, runAv:bool=True):
+    values = load_data(file)
+    x_data = values['x_data']
+    y_data = values['y_data']
+
+    ## Graph Settings ##
+    title = values['title']
+    x_label = values['x_label']
+    y_label = values['y_label']
+    plot_labels = values['plot_labels']
+
+    x = np.array(x_data)
+    y_data = np.array(y_data)
+    y_data = [y_data[:, i] for i in range(y_data.shape[1])]
+
+    av_length = 10
+    running_avs = [pd.Series(y).rolling(av_length).mean() for y in y_data]
+
+    fig = plt.figure(figsize = (12, 6))
+
+    ax1 = fig.add_subplot(111)
+
+    ax1.set_title(title)
+    ax1.set_xlabel(x_label)
+    ax1.set_ylabel(y_label)
+
+    for y, av, l in zip(y_data, running_avs, plot_labels):
+        ax1.plot(x, y, label=l)
+        if runAv:
+            ax1.plot(x, av, label=f'{l} {av_length}{y_label} Running Average')
+    
+    ySorted = np.copy(y_data[0])
+
+    hYlen = int(len(ySorted)/2)
+    peak1 = y_data[0][:hYlen]
+    peak2 = y_data[0][hYlen:]
+
+    ySorted.sort()
+    ySorted = ySorted[::-1]
+
+    mPeak1 = max(peak1)
+    mPeak2 = max(peak2)
+
+    x1 = x[:hYlen][np.where(peak1 == mPeak1)[0]]
+    x2 = x[hYlen:][np.where(peak2 == mPeak2)[0]]
+
+    thickness = abs(x2 - x1)
+    print(thickness)
+
+    return fig
+
+plotXVG("p-density.xvg", runAv=False)
+plt.show()
