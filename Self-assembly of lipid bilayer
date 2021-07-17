@@ -1,0 +1,26 @@
+#!/bin/bash --login
+#$-cwd
+#$-pe smp.pe 4
+
+module load apps/intel-18.0/gromacs/2020.3/single
+
+export OMP_NUM_THREADS=$NSLOTS
+
+gmx insert-molecules -ci DPPG-em.gro -box 7 7 7 -nmol 128 -radius 0.21 -try 500 -o 128_DPPG.gro
+
+gmx grompp -f minimization.mdp -c 128_DPPG.gro -p dppg.top -o dppg-min-no-solv.tpr
+gmx mdrun -deffnm dppg-min-no-solv -s dppg-min-no-solv.tpr -c 128_minimized.gro
+
+gmx solvate -cp 128_minimized.gro -cs water.gro -o waterbox.gro -p dppg.top -radius 0.21
+
+gmx grompp -f minimization.mdp -c waterbox.gro -p dppg.top -o dppg-min-solvent.tpr
+gmx mdrun -deffnm dppg-min-solvent -s dppg-min-solvent.tpr -c minimized.gro
+
+gmx grompp -f martini_md.mdp -c minimized.gro -p dppg.top -o dppg-md.tpr
+gmx mdrun -deffnm dppg-md
+
+# May need to rotate
+gmx editconf -f dppg-md.gro -rotate 0 90 0 -o dppg-md-rotated.gro
+
+gmx grompp -f martini_md-ani.mdp -c dppg-md-rotated.gro -p dppg.top -o bilayer.tpr -maxwarn 3
+gmx mdrun -deffnm bilayer
