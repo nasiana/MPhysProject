@@ -1,0 +1,30 @@
+#!/bin/bash --login
+#$-cwd
+#$-pe smp.pe 2
+
+module load apps/binapps/anaconda3/2020.07
+module load apps/intel-18.0/gromacs/2020.3/single
+export OMP_NUM_THREADS=$NSLOTS
+
+## Make sure that the peptide is centred
+gmx editconf -f GIIKK3I_box.gro -center 0 0 0 -o peptide.gro
+
+gmx insert-molecules -f bilayer_noW.gro -ci peptide.gro -box 7 7 14 -nmol 10 -try 100 -radius 0.21 -o pepBilayer_noW.gro
+
+echo -e "GIIK 10\n" >> bilayer.top
+
+gmx solvate -cp pepBilayer_noW.gro -cs water.gro -o pepBilayer.gro -p bilayer.top -radius 0.21
+
+## Generate an INDEX file
+python makeNDX.py
+
+## Minimise the system
+gmx grompp -f minimization.mdp -c pepBilayer.gro -n index.ndx -p bilayer.top -o min.tpr
+gmx mdrun -deffnm min -s min.tpr -c pepBilayerMin.gro
+
+## MDRun
+gmx grompp -f martini_md.mdp -c pepBilayerMin.gro -n index.ndx  -p bilayer.top -o pep-md.tpr
+gmx mdrun -deffnm pep-md
+
+cat bilayer.top > bilayer_pep.top
+cat bilayer-original.top > bilayer.top
